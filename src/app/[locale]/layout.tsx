@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { isLocale, locales, pick, type Locale } from "@/i18n/config";
+import { isLocale, pick, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n";
 import { getSettings } from "@/lib/settings";
 import { getCategoryTree } from "@/lib/catalog";
@@ -13,9 +13,8 @@ import { Footer } from "@/components/store/footer";
 import { WhatsAppFloating } from "@/components/store/whatsapp-button";
 import { AnalyticsScripts } from "@/components/store/analytics-scripts";
 
-export function generateStaticParams() {
-  return locales.map((locale) => ({ locale }));
-}
+// Каталог, цены и остатки меняются постоянно — страницы рендерятся на каждый запрос
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;

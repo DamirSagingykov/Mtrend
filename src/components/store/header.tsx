@@ -272,7 +272,7 @@ export function Header({ categories, topBar }: { categories: MenuCategory[]; top
             { href: L("/catalog"), icon: LayoutGrid, label: t.nav.catalog },
             { href: L("/favorites"), icon: Heart, label: t.nav.favorites, badge: fav.ids.length },
             { href: L("/cart"), icon: ShoppingBag, label: t.nav.cart, badge: cart.count },
-            { href: L("/account"), icon: User, label: t.nav.account },
+            { href: L("/account"), icon: User, label: t.nav.accountShort },
           ].map((item) => {
             const active = item.exact ? pathname === item.href : isActive(item.href);
             return (

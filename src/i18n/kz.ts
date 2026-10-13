@@ -20,6 +20,7 @@ const kz: Dictionary = {
     favorites: "Таңдаулылар",
     account: "Жеке кабинет",
     cart: "Себет",
+    accountShort: "Кабинет",
     menu: "Мәзір",
     close: "Жабу",
     allCategories: "Барлық санаттар",

@@ -4,6 +4,8 @@ import clsx from "clsx";
 import { ActionForm, type ActionResult } from "./action-form";
 import { adminBtn, adminBtnOutline, adminInput, adminLabel } from "./ui-classes";
 
+const DEFAULT_ON = new Set(["isActive", "isPickup", "showInFooter"]);
+
 export type ClientField = {
   name: string;
   label: string;
@@ -52,7 +54,7 @@ export function EntityForm({
             <label key={f.name} className={clsx("block", (f.wide || f.type === "markdown" || f.type === "textarea") && "sm:col-span-2", f.type === "checkbox" && "flex items-center gap-2 self-end h-9")}>
               {f.type === "checkbox" ? (
                 <>
-                  <input type="checkbox" name={f.name} defaultChecked={v === undefined ? true : !!v} className="accent-ink w-4 h-4" />
+                  <input type="checkbox" name={f.name} defaultChecked={v === undefined ? DEFAULT_ON.has(f.name) : !!v} className="accent-ink w-4 h-4" />
                   <span className="text-[13px]">{f.label}</span>
                 </>
               ) : (
@@ -65,7 +67,7 @@ export function EntityForm({
                     <textarea {...common} defaultValue={(v as string) ?? ""} className={clsx(adminInput, "h-auto py-2", f.type === "markdown" ? "min-h-[220px] font-mono text-[12px]" : "min-h-[80px]")} />
                   ) : f.type === "select" ? (
                     <select {...common} defaultValue={(v as string) ?? ""} className={adminInput}>
-                      {(f.nullable || !v) && <option value="">—</option>}
+                      {f.nullable && <option value="">—</option>}
                       {f.options?.map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}

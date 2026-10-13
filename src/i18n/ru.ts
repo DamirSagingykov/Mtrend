@@ -18,6 +18,7 @@ const ru = {
     favorites: "Избранное",
     account: "Личный кабинет",
     cart: "Корзина",
+    accountShort: "Кабинет",
     menu: "Меню",
     close: "Закрыть",
     allCategories: "Все категории",

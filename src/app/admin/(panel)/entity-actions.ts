@@ -115,6 +115,10 @@ export async function saveEntityAction(_: ActionResult, fd: FormData): Promise<A
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return { error: `Значение уже используется: ${(e.meta?.target as string[] | undefined)?.join(", ") ?? "уникальное поле"}` };
     }
+    if (e instanceof Prisma.PrismaClientValidationError) {
+      console.error("[admin] validation", e.message);
+      return { error: "Проверьте заполнение обязательных полей" };
+    }
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
   }
 }

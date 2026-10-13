@@ -1,8 +1,11 @@
 import type { Locale } from "@/i18n/config";
 
-export function formatPrice(value: number, locale: Locale = "ru"): string {
-  const n = new Intl.NumberFormat(locale === "kz" ? "kk-KZ" : "ru-KZ", { maximumFractionDigits: 0 }).format(value);
-  return `${n.replace(/ | /g, " ")} ₸`;
+/** Формат цены «89 000 ₸» без Intl: сервер и браузер выводят одинаково (нет расхождений при гидратации) */
+export function formatPrice(value: number, _locale: Locale = "ru"): string {
+  void _locale;
+  const sign = value < 0 ? "−" : "";
+  const n = String(Math.abs(Math.round(value))).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
+  return `${sign}${n}\u00a0₸`;
 }
 
 export function formatDate(value: Date | string, locale: Locale = "ru", withTime = false): string {
