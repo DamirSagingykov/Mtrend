@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="600" height="800">
+<rect width="600" height="800" fill="#f7f3ee"/>
+<ellipse cx="300" cy="730" rx="210" ry="18" fill="#000" opacity=".06"/>
+<g transform="translate(300 400) scale(1.25) translate(-300 -400)"><path d="M215 150 L275 125 L300 210 L325 125 L385 150 L465 195 L495 520 L450 530 L438 340 L445 740 L155 740 L162 340 L150 530 L105 520 L135 195 Z" fill="#b08559"/>
+<path d="M275 125 L300 210 L325 125 L250 260 L300 330 L350 260 Z" fill="#725639" opacity=".25"/>
+<line x1="300" y1="210" x2="300" y2="740" stroke="#725639" stroke-width="2"/>
+<circle cx="280" cy="380" r="7" fill="#725639"/><circle cx="320" cy="380" r="7" fill="#725639"/><circle cx="280" cy="470" r="7" fill="#725639"/><circle cx="320" cy="470" r="7" fill="#725639"/>
+<path d="M185 560 h60 M355 560 h60" stroke="#725639" stroke-width="3"/></g>
+<text x="300" y="776" font-family="Arial,Helvetica,sans-serif" font-size="15" letter-spacing="5" fill="#8a6a4f" text-anchor="middle">M-TREND · DEMO</text>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="600" height="800">
+<rect width="600" height="800" fill="#efe8df"/>
+<ellipse cx="300" cy="620" rx="210" ry="18" fill="#000" opacity=".06"/>
+<g><path d="M100 525 Q110 455 180 455 L340 470 Q440 480 480 520 Q505 545 495 575 L115 575 Q95 560 100 525 Z" fill="#6b4a32"/>
+<rect x="105" y="575" width="395" height="18" rx="6" fill="#453020"/>
+<path d="M300 475 L420 498 L410 520 L300 505 Z" fill="#453020" opacity=".4"/></g>
+<text x="300" y="776" font-family="Arial,Helvetica,sans-serif" font-size="15" letter-spacing="5" fill="#8a6a4f" text-anchor="middle">M-TREND · DEMO</text>
+</svg>

@@ -1,0 +1,626 @@
+// M-TREND — схема базы данных интернет-магазина
+// PostgreSQL + Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Пользователи и доступ ───────────────────────────
+
+enum Role {
+  CUSTOMER
+  MANAGER
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String?   @unique
+  phone        String?   @unique
+  name         String
+  passwordHash String
+  role         Role      @default(CUSTOMER)
+  isActive     Boolean   @default(true)
+  position     String? // должность сотрудника (учёт сотрудников)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions  Session[]
+  addresses Address[]
+  favorites Favorite[]
+  orders    Order[]
+  auditLogs AuditLog[]
+
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String?
+  city      String
+  address   String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Favorite {
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, productId])
+}
+
+// ─────────────────────────────── Каталог ───────────────────────────────
+
+model Category {
+  id            String     @id @default(cuid())
+  slug          String     @unique
+  nameRu        String
+  nameKz        String
+  descriptionRu String?
+  descriptionKz String?
+  imageUrl      String?
+  parentId      String?
+  parent        Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children      Category[] @relation("CategoryTree")
+  sortOrder     Int        @default(0)
+  isActive      Boolean    @default(true)
+  showOnHome    Boolean    @default(false)
+  seoTitleRu    String?
+  seoTitleKz    String?
+  seoDescRu     String?
+  seoDescKz     String?
+  externalId    String?    @unique // идентификатор группы в 1С
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  products Product[]
+
+  @@index([parentId])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum FitType {
+  SLIM
+  REGULAR
+  RELAXED
+}
+
+enum Season {
+  ALL_SEASON
+  DEMI
+  WINTER
+  SUMMER
+}
+
+model Color {
+  id        String @id @default(cuid())
+  code      String @unique // код цвета (используется при импорте / 1С)
+  nameRu    String
+  nameKz    String
+  hex       String @default("#cccccc")
+  sortOrder Int    @default(0)
+
+  variants ProductVariant[]
+  images   ProductImage[]
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  article       String        @unique // артикул модели, например 9293
+  brand         String        @default("M-TREND")
+  nameRu        String
+  nameKz        String
+  descriptionRu String?
+  descriptionKz String?
+  compositionRu String? // состав, например «70% шерсть, 30% полиэстер»
+  compositionKz String?
+  materialRu    String? // основной материал для фильтра
+  materialKz    String?
+  careRu        String?
+  careKz        String?
+  fitAdviceRu   String? // рекомендации по выбору размера
+  fitAdviceKz   String?
+  season        Season?
+  fit           FitType?
+  videoUrl      String?
+  categoryId    String
+  category      Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  sizeChartId   String?
+  sizeChart     SizeChart?    @relation(fields: [sizeChartId], references: [id], onDelete: SetNull)
+  status        ProductStatus @default(DRAFT)
+  isNew         Boolean       @default(false)
+  isBestseller  Boolean       @default(false)
+  isDemo        Boolean       @default(false) // тестовый товар — НЕ для реальных продаж
+  hasHeights    Boolean       @default(false) // модель имеет ростовки (костюмы)
+
+  // Денормализованные поля для быстрых фильтров/сортировок (пересчитываются сервисом)
+  minPrice           Int @default(0)
+  maxPrice           Int @default(0)
+  maxDiscountPercent Int @default(0)
+  totalStock         Int @default(0)
+  salesCount         Int @default(0)
+  viewCount          Int @default(0)
+
+  seoTitleRu String?
+  seoTitleKz String?
+  seoDescRu  String?
+  seoDescKz  String?
+
+  externalId  String?   @unique // идентификатор номенклатуры в 1С
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  variants   ProductVariant[]
+  images     ProductImage[]
+  favorites  Favorite[]
+  orderItems OrderItem[]
+  lookItems  LookItem[]
+
+  @@index([categoryId, status])
+  @@index([status, minPrice])
+  @@index([status, createdAt])
+  @@index([status, salesCount])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altRu     String?
+  altKz     String?
+  colorId   String?
+  color     Color?   @relation(fields: [colorId], references: [id], onDelete: SetNull)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId, sortOrder])
+}
+
+// Торговое предложение (SKU): конкретный цвет + размер + ростовка
+model ProductVariant {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku        String   @unique
+  colorId    String
+  color      Color    @relation(fields: [colorId], references: [id], onDelete: Restrict)
+  size       String // 48, 50, 52 … или S, M, L
+  height     String? // ростовка, например 176 / 182 / 188
+  price      Int // цена в тенге (целое)
+  oldPrice   Int? // цена до скидки
+  isActive   Boolean  @default(true)
+  barcode    String?
+  externalId String?  @unique // характеристика в 1С
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  stocks     Stock[]
+  orderItems OrderItem[]
+  movements  StockMovement[]
+
+  @@unique([productId, colorId, size, height])
+  @@index([productId])
+  @@index([size])
+}
+
+model SizeChart {
+  id        String   @id @default(cuid())
+  name      String
+  kind      String   @default("GENERIC") // SUIT | JACKET | TROUSERS | SHIRT | KNIT | OUTERWEAR | SHOES | GENERIC
+  fit       FitType?
+  // Таблица замеров модели. rows: [{ size, height?, chestMin, chestMax, waistMin, waistMax, heightMin, heightMax, weightMin?, weightMax?, footMin?, footMax? }] (см)
+  rows      Json
+  notesRu   String?
+  notesKz   String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+}
+
+// ─────────────────────────── Склады и остатки ───────────────────────────
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  code      String   @unique // код склада в 1С, например AST, AKT
+  name      String
+  city      String
+  address   String?
+  isActive  Boolean  @default(true)
+  priority  Int      @default(0) // порядок списания при доставке (меньше — раньше)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stocks    Stock[]
+  stores    Store[]
+  movements StockMovement[]
+}
+
+model Stock {
+  id          String         @id @default(cuid())
+  variantId   String
+  warehouseId String
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  quantity    Int            @default(0)
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([variantId, warehouseId])
+  @@index([warehouseId])
+}
+
+enum StockMovementReason {
+  ORDER // списание под заказ
+  ORDER_CANCEL // возврат остатка при отмене
+  RETURN // возврат от покупателя
+  MANUAL // ручная корректировка
+  IMPORT // импорт CSV/Excel
+  SYNC_1C // синхронизация 1С
+}
+
+model StockMovement {
+  id          String              @id @default(cuid())
+  variantId   String
+  warehouseId String
+  variant     ProductVariant      @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  delta       Int
+  reason      StockMovementReason
+  orderId     String?
+  order       Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  userId      String?
+  note        String?
+  createdAt   DateTime            @default(now())
+
+  @@index([orderId])
+  @@index([variantId, createdAt])
+}
+
+model Store {
+  id          String     @id @default(cuid())
+  city        String
+  nameRu      String
+  nameKz      String
+  addressRu   String
+  addressKz   String
+  hoursRu     String?
+  hoursKz     String?
+  phone       String?
+  mapUrl      String? // ссылка на 2ГИС / Яндекс / Google Maps
+  mapEmbedUrl String? // URL для iframe карты
+  latitude    Float?
+  longitude   Float?
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  isPickup    Boolean    @default(true)
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  orders Order[]
+}
+
+// ─────────────────────────────── Заказы ───────────────────────────────
+
+enum OrderStatus {
+  NEW
+  PENDING_CONFIRMATION
+  CONFIRMED
+  ASSEMBLING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum PaymentStatus {
+  NOT_PAID // ожидает оплаты / подтверждения
+  PENDING // платёж инициирован у провайдера
+  PAID // подтверждено провайдером или менеджером
+  FAILED
+  REFUNDED
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  number         String        @unique // M-260001
+  accessToken    String        @unique // для просмотра заказа гостем
+  idempotencyKey String        @unique
+  status         OrderStatus   @default(NEW)
+  paymentStatus  PaymentStatus @default(NOT_PAID)
+  paymentMethod  String // код способа оплаты
+  paymentRef     String? // идентификатор транзакции провайдера
+  deliveryMethod String // код способа доставки
+  locale         String        @default("ru")
+
+  userId        String?
+  user          User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerName  String
+  customerPhone String
+  customerEmail String?
+  city          String
+  address       String?
+  storeId       String?
+  store         Store?  @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  comment       String?
+  managerNote   String?
+
+  subtotal      Int // сумма по текущим ценам
+  itemsDiscount Int        @default(0) // скидка по старым ценам (информативно)
+  promoDiscount Int        @default(0)
+  deliveryCost  Int        @default(0)
+  total         Int
+  promoCode     String?
+  promoCodeId   String?
+  promo         PromoCode? @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+
+  stockReleased  Boolean   @default(false) // остатки возвращены (отмена) — защита от двойного возврата
+  isDemo         Boolean   @default(false) // заказ содержит демонстрационные товары
+  exportedTo1CAt DateTime?
+  externalId     String?   @unique
+
+  ip        String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     OrderItem[]
+  history   OrderStatusHistory[]
+  movements StockMovement[]
+
+  @@index([status, createdAt])
+  @@index([customerPhone])
+  @@index([userId])
+  @@index([city])
+}
+
+model OrderItem {
+  id          String          @id @default(cuid())
+  orderId     String
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  // снимок данных на момент заказа
+  sku         String
+  article     String
+  nameRu      String
+  nameKz      String
+  colorRu     String
+  colorKz     String
+  size        String
+  height      String?
+  imageUrl    String?
+  price       Int
+  oldPrice    Int?
+  quantity    Int
+  total       Int
+  allocations Json? // [{ warehouseCode, quantity }]
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  userId    String?
+  userName  String?
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+}
+
+model OrderCounter {
+  id    Int @id @default(1)
+  value Int @default(0)
+}
+
+// ─────────────────────── Маркетинг, доставка, оплата ───────────────────────
+
+enum PromoType {
+  PERCENT
+  FIXED
+}
+
+model PromoCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  type        PromoType
+  value       Int
+  minOrder    Int       @default(0)
+  maxUses     Int?
+  usedCount   Int       @default(0)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  isActive    Boolean   @default(true)
+  applyToSale Boolean   @default(false) // применять к товарам со скидкой
+  description String?
+  createdAt   DateTime  @default(now())
+
+  orders Order[]
+}
+
+enum DeliveryType {
+  COURIER
+  PICKUP
+  POST
+}
+
+model DeliveryMethod {
+  id            String       @id @default(cuid())
+  code          String       @unique
+  type          DeliveryType
+  nameRu        String
+  nameKz        String
+  descRu        String?
+  descKz        String?
+  price         Int          @default(0)
+  freeFrom      Int? // бесплатно от суммы
+  calcByManager Boolean      @default(false) // стоимость по тарифу перевозчика, сообщает менеджер (не входит в сумму заказа)
+  cities        String[] // пусто — все города Казахстана
+  etaRu         String?
+  etaKz         String?
+  isActive      Boolean      @default(true)
+  sortOrder     Int          @default(0)
+}
+
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  provider  String // manual | cash | kaspi | card_gateway
+  nameRu    String
+  nameKz    String
+  descRu    String?
+  descKz    String?
+  isActive  Boolean  @default(false)
+  sortOrder Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model Banner {
+  id             String   @id @default(cuid())
+  titleRu        String
+  titleKz        String
+  subtitleRu     String?
+  subtitleKz     String?
+  buttonRu       String?
+  buttonKz       String?
+  link           String?
+  imageUrl       String
+  mobileImageUrl String?
+  textColor      String   @default("light") // light | dark
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+}
+
+model Look {
+  id        String     @id @default(cuid())
+  titleRu   String
+  titleKz   String
+  imageUrl  String
+  sortOrder Int        @default(0)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  items     LookItem[]
+}
+
+model LookItem {
+  lookId    String
+  productId String
+  look      Look    @relation(fields: [lookId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sortOrder Int     @default(0)
+
+  @@id([lookId, productId])
+}
+
+model Page {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  titleRu      String
+  titleKz      String
+  contentRu    String
+  contentKz    String
+  isActive     Boolean  @default(true)
+  showInFooter Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  phone     String?
+  locale    String   @default("ru")
+  consent   Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────── Журналы ───────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  data      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model IntegrationLog {
+  id         String   @id @default(cuid())
+  source     String // 1c | csv | xlsx
+  operation  String // catalog | stock | orders-export | orders-ack
+  status     String // success | partial | error
+  message    String?
+  stats      Json?
+  errors     Json?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([source, createdAt])
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  channel   String // email | telegram | whatsapp
+  recipient String
+  subject   String?
+  status    String // sent | skipped | error
+  error     String?
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
